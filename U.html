@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng Kê Tiền Mặt</title>
+    <style>
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { font-family: sans-serif; background-color: #f5f7fa; padding: 10px; display: flex; justify-content: center; margin: 0; }
+        #main-app { background: white; width: 100%; max-width: 450px; padding: 20px; border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #2d3436; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #dfe6e9; padding: 8px; text-align: center; }
+        input { width: 100%; border: none; text-align: center; font-size: 16px; outline: none; }
+        #clock { text-align: center; color: #636e72; font-size: 14px; margin: 10px 0; }
+        .total-box { text-align: center; margin: 15px 0; font-size: 18px; font-weight: bold; color: #0984e3; padding: 10px; background: #f1f2f6; border-radius: 8px; }
+        .btn-group { display: flex; gap: 10px; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 14px; cursor: pointer; }
+
+        /* ===== CALCULATOR MODAL ===== */
+        #calc-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ffffff; z-index: 9999; padding: 20px; overflow-y: auto; }
+        .calc-screen { width: 100%; height: 80px; border: 1px solid #ccc; text-align: right; font-size: 30px; margin-bottom: 10px; color: #333; padding: 10px; background: #f8f9fa; border-radius: 8px; outline: none; }
+
+        /* Main calc layout: numbers (3 col) + operators column (1 col) side by side */
+        .calc-body { display: grid; grid-template-columns: 3fr 1fr; gap: 10px; }
+
+        /* Left: number area stacked */
+        .calc-left { display: flex; flex-direction: column; gap: 10px; }
+        .calc-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+        /* Right: operator column */
+        .calc-right { display: flex; flex-direction: column; gap: 10px; }
+
+        .key { height: 60px; border-radius: 8px; border: none; background: #eee; font-size: 20px; cursor: pointer; color: #2d3436; font-weight: 500; }
+        .key:active { opacity: 0.75; }
+        .key.op { background: #dfe6e9; color: #0984e3; font-size: 22px; font-weight: bold; }
+        .key.equal { background: #0984e3; color: white; }
+        .key.danger { background: #ff7675; color: white; }
+        .key.dark { background: #636e72; color: white; }
+        .key.ac { background: #fdcb6e; color: #2d3436; }
+
+        @media print {
+            #main-app { box-shadow: none; }
+            .btn-group { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="main-app">
+    <h2>Bảng Kê Tiền Mặt</h2>
+    <div id="clock">Đang khởi tạo...</div>
+    <table>
+        <tr><th>Mệnh giá</th><th>Số lượng</th><th>Thành tiền</th></tr>
+        <tbody id="table-body"></tbody>
+    </table>
+    <div class="total-box">Tổng cộng: <span id="grand-total">0</span> ₫</div>
+    <div class="btn-group">
+        <button style="background:#00b894;" onclick="window.print()">Lưu/In (PDF)</button>
+        <button style="background:#e17055;" onclick="clearAll()">Xóa tất cả</button>
+        <button style="background:#636e72;" onclick="document.getElementById('calc-modal').style.display='block'">Máy tính</button>
+    </div>
+</div>
+
+<!-- ===== CALCULATOR ===== -->
+<div id="calc-modal">
+    <input type="text" id="display" class="calc-screen" value="0" readonly>
+
+    <!-- Body: số bên trái, toán tử + = bên phải -->
+    <div class="calc-body">
+        <!-- Cột trái: số -->
+        <div class="calc-left">
+            <div class="calc-row">
+                <button class="key ac" onclick="clearCalc()">AC</button>
+                <button class="key dark" onclick="del()">⌫</button>
+                <button class="key danger" onclick="document.getElementById('calc-modal').style.display='none'">Đóng</button>
+            </div>
+            <div class="calc-row">
+                <button class="key" onclick="append('7')">7</button>
+                <button class="key" onclick="append('8')">8</button>
+                <button class="key" onclick="append('9')">9</button>
+            </div>
+            <div class="calc-row">
+                <button class="key" onclick="append('4')">4</button>
+                <button class="key" onclick="append('5')">5</button>
+                <button class="key" onclick="append('6')">6</button>
+            </div>
+            <div class="calc-row">
+                <button class="key" onclick="append('1')">1</button>
+                <button class="key" onclick="append('2')">2</button>
+                <button class="key" onclick="append('3')">3</button>
+            </div>
+            <div class="calc-row">
+                <button class="key" onclick="append('0')">0</button>
+                <button class="key" onclick="append('000')">000</button>
+                <button class="key" onclick="append('.')">,</button>
+            </div>
+        </div>
+        <!-- Cột phải: toán tử + = -->
+        <div class="calc-right">
+            <button class="key op" onclick="append('/')">÷</button>
+            <button class="key op" onclick="append('*')">×</button>
+            <button class="key op" onclick="append('-')">−</button>
+            <button class="key op" onclick="append('+')">+</button>
+            <button class="key equal" onclick="calc()">=</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = 'bangketienmat_v1';
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Đồng hồ
+        function updateClock() {
+            document.getElementById('clock').innerText = new Date().toLocaleString('vi-VN');
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Tạo bảng
+        const denoms = [500000, 200000, 100000, 50000, 20000, 10000, 5000, 2000, 1000];
+        const tbody = document.getElementById('table-body');
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+
+        denoms.forEach(v => {
+            const val = saved[v] || '';
+            tbody.innerHTML += `<tr>
+                <td>${v.toLocaleString('vi-VN')}</td>
+                <td><input type="number" data-v="${v}" oninput="calcTotal()" placeholder="0" value="${val}"></td>
+                <td id="s-${v}">0</td>
+            </tr>`;
+        });
+
+        calcTotal(); // tính lại từ dữ liệu đã lưu
+    });
+
+    function calcTotal() {
+        let total = 0;
+        const state = {};
+        document.querySelectorAll('input[data-v]').forEach(i => {
+            const qty = parseInt(i.value) || 0;
+            const denom = parseInt(i.dataset.v);
+            const s = qty * denom;
+            document.getElementById('s-' + denom).innerText = s.toLocaleString('vi-VN');
+            total += s;
+            if (qty) state[denom] = qty;
+        });
+        document.getElementById('grand-total').innerText = total.toLocaleString('vi-VN');
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function clearAll() {
+        if (!confirm('Xóa tất cả số lượng đã nhập?')) return;
+        document.querySelectorAll('input[data-v]').forEach(i => i.value = '');
+        localStorage.removeItem(STORAGE_KEY);
+        calcTotal();
+    }
+
+    // ===== Máy tính =====
+    let raw = "0";
+    function append(v) {
+        raw = (raw === "0" && v !== ".") ? v : raw + v;
+        update();
+    }
+    function clearCalc() { raw = "0"; update(); }
+    function del() { raw = raw.length > 1 ? raw.slice(0, -1) : "0"; update(); }
+    function calc() {
+        try {
+            raw = eval(raw.replace(/,/g, '.')).toString();
+            update();
+        } catch {
+            raw = "Lỗi";
+            update();
+            setTimeout(clearCalc, 1000);
+        }
+    }
+    function update() {
+        document.getElementById('display').value = raw.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+</script>
+</body>
+</html>
