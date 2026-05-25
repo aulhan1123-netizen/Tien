@@ -1,25 +1,15 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bảng Kê Tiền Mặt</title>
+    
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="icon.png">
     <link rel="apple-touch-icon" href="icon.png">
-    ```
+    <meta name="theme-color" content="#0984e3">
 
-2. **Thêm đoạn kích hoạt ở cuối cùng:** Kéo xuống dưới cùng của file `index.html`, ngay trước thẻ đóng `</body>`, bạn dán đoạn script này vào:
-```html
-<script>
-  // Đăng ký Service Worker
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
-  }
-</script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bảng Kê Tiền Mặt</title>
     <style>
         * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         body { font-family: sans-serif; background-color: #f5f7fa; padding: 10px; display: flex; justify-content: center; margin: 0; }
@@ -78,13 +68,10 @@
     </div>
 </div>
 
-<!-- ===== CALCULATOR ===== -->
 <div id="calc-modal">
     <input type="text" id="display" class="calc-screen" value="0" readonly>
 
-    <!-- Body: số bên trái, toán tử + = bên phải -->
     <div class="calc-body">
-        <!-- Cột trái: số -->
         <div class="calc-left">
             <div class="calc-row">
                 <button class="key ac" onclick="clearCalc()">AC</button>
@@ -112,7 +99,6 @@
                 <button class="key" onclick="append('.')">,</button>
             </div>
         </div>
-        <!-- Cột phải: toán tử + = -->
         <div class="calc-right">
             <button class="key op" onclick="append('/')">÷</button>
             <button class="key op" onclick="append('*')">×</button>
@@ -148,7 +134,7 @@
             </tr>`;
         });
 
-        calcTotal(); // tính lại từ dữ liệu đã lưu
+        calcTotal();
     });
 
     function calcTotal() {
@@ -193,6 +179,19 @@
     }
     function update() {
         document.getElementById('display').value = raw.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
+    // ===== ĐĂNG KÝ SERVICE WORKER CHO PWA =====
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .then(registration => {
+                    console.log('ServiceWorker đăng ký thành công');
+                })
+                .catch(err => {
+                    console.log('ServiceWorker đăng ký thất bại: ', err);
+                });
+        });
     }
 </script>
 </body>
