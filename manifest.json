@@ -1,0 +1,15 @@
+{
+  "name": "Bảng Kê Tiền Mặt",
+  "short_name": "Kê Tiền",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#0984e3",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png"
+    }
+  ]
+}
