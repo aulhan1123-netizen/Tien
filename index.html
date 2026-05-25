@@ -10,6 +10,8 @@
     <link rel="apple-touch-icon" href="icon.PNG">
     <meta name="theme-color" content="#0984e3">
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
     <style>
         * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         body { font-family: sans-serif; background-color: #f5f7fa; padding: 10px; display: flex; justify-content: center; margin: 0; }
@@ -21,7 +23,6 @@
         #clock { text-align: center; color: #636e72; font-size: 14px; margin: 10px 0; }
         .total-box { text-align: center; margin: 15px 0; font-size: 18px; font-weight: bold; color: #0984e3; padding: 10px; background: #f1f2f6; border-radius: 8px; }
         
-        /* Chỉnh lại nhóm nút thành dạng lưới 2x2 cho đẹp trên điện thoại */
         .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         button { padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 14px; cursor: pointer; }
 
@@ -46,14 +47,12 @@
             #main-app { box-shadow: none; padding: 0; width: 100%; max-width: 100%; margin: 0; border-radius: 0; }
             .btn-group, #calc-modal { display: none !important; }
             
-            /* Tối ưu bảng thành dạng hóa đơn nét đứt */
             h2 { font-size: 18px; margin: 5px 0; }
             #clock { font-size: 12px; margin-bottom: 10px; }
             table { font-size: 12px; margin-top: 0; }
             th, td { border: none; border-bottom: 1px dashed #999; padding: 6px 2px; }
             th { border-bottom: 1px solid #000; }
             
-            /* Biến ô input nhập liệu thành văn bản thường khi in */
             input { font-size: 12px; font-weight: bold; color: black; background: transparent; padding: 0; }
             input::placeholder { color: transparent; }
             
@@ -74,7 +73,7 @@
     
     <div class="btn-group">
         <button style="background:#0984e3;" onclick="window.print()">🖨️ In bill</button>
-        <button style="background:#00b894;" onclick="saveTextFile()">💾 Lưu (TXT)</button>
+        <button style="background:#00b894;" onclick="savePDF()">💾 Lưu (PDF)</button>
         <button style="background:#e17055;" onclick="clearAll()">🗑️ Xóa tất cả</button>
         <button style="background:#636e72;" onclick="document.getElementById('calc-modal').style.display='block'">🧮 Máy tính</button>
     </div>
@@ -170,40 +169,61 @@
         calcTotal();
     }
 
-    // ===== Hàm Lưu Hóa Đơn Dạng Text =====
-    function saveTextFile() {
-        let text = "BẢNG KÊ TIỀN MẶT\n";
-        text += "Thời gian: " + document.getElementById('clock').innerText + "\n";
-        text += "------------------------\n";
+    // ===== Hàm Lưu Hóa Đơn Dạng PDF =====
+    function savePDF() {
+        const element = document.getElementById('main-app');
+        const btnGroup = document.querySelector('.btn-group');
+        const inputs = document.querySelectorAll('input[data-v]');
         
         let hasData = false;
-        document.querySelectorAll('input[data-v]').forEach(i => {
-            const qty = parseInt(i.value) || 0;
-            if (qty > 0) {
-                hasData = true;
-                const denom = parseInt(i.dataset.v);
-                const s = qty * denom;
-                text += `${denom.toLocaleString('vi-VN')} x ${qty} = ${s.toLocaleString('vi-VN')}\n`;
-            }
-        });
         
+        // Chuyển đổi tạm thời các ô input thành thẻ <span> (chữ thường) 
+        // để PDF render đẹp và không bị viền input
+        const originalElements = [];
+        inputs.forEach(input => {
+            const val = parseInt(input.value) || 0;
+            if (val > 0) hasData = true;
+
+            const span = document.createElement('span');
+            span.innerText = val > 0 ? val : '';
+            span.style.fontWeight = 'bold';
+            
+            originalElements.push({ parent: input.parentNode, input: input });
+            input.parentNode.replaceChild(span, input);
+        });
+
         if (!hasData) {
             alert("Chưa có dữ liệu để lưu!");
+            // Khôi phục lại thẻ input nếu không có dữ liệu
+            originalElements.forEach(item => {
+                item.parent.innerHTML = '';
+                item.parent.appendChild(item.input);
+            });
             return;
         }
 
-        text += "------------------------\n";
-        text += "Tổng cộng: " + document.getElementById('grand-total').innerText + " VND\n";
+        // Ẩn nhóm nút đi để không in dính nút vào PDF
+        btnGroup.style.display = 'none';
 
-        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `BangKeTienMat_${new Date().getTime()}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        // Cấu hình xuất PDF
+        const opt = {
+            margin:       [10, 10, 10, 10], // top, left, bottom, right
+            filename:     `BangKeTienMat_${new Date().getTime()}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 }, // scale cao để nét chữ rõ ràng
+            jsPDF:        { unit: 'mm', format: 'a5', orientation: 'portrait' } // Dùng A5 cho bảng kê là vừa đẹp
+        };
+
+        // Tiến hành tạo file
+        html2pdf().set(opt).from(element).save().then(() => {
+            // Khi lưu xong, khôi phục lại toàn bộ giao diện: hiện nút, trả lại ô input
+            btnGroup.style.display = 'grid';
+            
+            const spans = element.querySelectorAll('td span');
+            spans.forEach((span, index) => {
+                originalElements[index].parent.replaceChild(originalElements[index].input, span);
+            });
+        });
     }
 
     // ===== Máy tính =====
