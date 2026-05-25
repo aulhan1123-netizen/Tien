@@ -1,9 +1,23 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+<head>
     <meta charset="UTF-8">
-    <link rel="icon" type="image/png" href="icon.jpg">
-    <link rel="apple-touch-icon" href="icon.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng Kê Tiền Mặt</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    ```
+
+2. **Thêm đoạn kích hoạt ở cuối cùng:** Kéo xuống dưới cùng của file `index.html`, ngay trước thẻ đóng `</body>`, bạn dán đoạn script này vào:
+```html
+<script>
+  // Đăng ký Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bảng Kê Tiền Mặt</title>
     <style>
