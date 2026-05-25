@@ -20,23 +20,18 @@
         input { width: 100%; border: none; text-align: center; font-size: 16px; outline: none; }
         #clock { text-align: center; color: #636e72; font-size: 14px; margin: 10px 0; }
         .total-box { text-align: center; margin: 15px 0; font-size: 18px; font-weight: bold; color: #0984e3; padding: 10px; background: #f1f2f6; border-radius: 8px; }
-        .btn-group { display: flex; gap: 10px; }
-        button { flex: 1; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 14px; cursor: pointer; }
+        
+        /* Chỉnh lại nhóm nút thành dạng lưới 2x2 cho đẹp trên điện thoại */
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button { padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 14px; cursor: pointer; }
 
         /* ===== CALCULATOR MODAL ===== */
         #calc-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ffffff; z-index: 9999; padding: 20px; overflow-y: auto; }
         .calc-screen { width: 100%; height: 80px; border: 1px solid #ccc; text-align: right; font-size: 30px; margin-bottom: 10px; color: #333; padding: 10px; background: #f8f9fa; border-radius: 8px; outline: none; }
-
-        /* Main calc layout: numbers (3 col) + operators column (1 col) side by side */
         .calc-body { display: grid; grid-template-columns: 3fr 1fr; gap: 10px; }
-
-        /* Left: number area stacked */
         .calc-left { display: flex; flex-direction: column; gap: 10px; }
         .calc-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-
-        /* Right: operator column */
         .calc-right { display: flex; flex-direction: column; gap: 10px; }
-
         .key { height: 60px; border-radius: 8px; border: none; background: #eee; font-size: 20px; cursor: pointer; color: #2d3436; font-weight: 500; }
         .key:active { opacity: 0.75; }
         .key.op { background: #dfe6e9; color: #0984e3; font-size: 22px; font-weight: bold; }
@@ -45,9 +40,24 @@
         .key.dark { background: #636e72; color: white; }
         .key.ac { background: #fdcb6e; color: #2d3436; }
 
+        /* ===== CSS DÀNH RIÊNG KHI IN MÁY IN NHIỆT ===== */
         @media print {
-            #main-app { box-shadow: none; }
-            .btn-group { display: none; }
+            body { background: white; padding: 0; }
+            #main-app { box-shadow: none; padding: 0; width: 100%; max-width: 100%; margin: 0; border-radius: 0; }
+            .btn-group, #calc-modal { display: none !important; }
+            
+            /* Tối ưu bảng thành dạng hóa đơn nét đứt */
+            h2 { font-size: 18px; margin: 5px 0; }
+            #clock { font-size: 12px; margin-bottom: 10px; }
+            table { font-size: 12px; margin-top: 0; }
+            th, td { border: none; border-bottom: 1px dashed #999; padding: 6px 2px; }
+            th { border-bottom: 1px solid #000; }
+            
+            /* Biến ô input nhập liệu thành văn bản thường khi in */
+            input { font-size: 12px; font-weight: bold; color: black; background: transparent; padding: 0; }
+            input::placeholder { color: transparent; }
+            
+            .total-box { font-size: 16px; background: none; border-top: 2px solid #000; border-radius: 0; padding: 10px 0; color: #000; margin-top: 5px; }
         }
     </style>
 </head>
@@ -61,16 +71,17 @@
         <tbody id="table-body"></tbody>
     </table>
     <div class="total-box">Tổng cộng: <span id="grand-total">0</span> ₫</div>
+    
     <div class="btn-group">
-        <button style="background:#00b894;" onclick="window.print()">Lưu/In (PDF)</button>
-        <button style="background:#e17055;" onclick="clearAll()">Xóa tất cả</button>
-        <button style="background:#636e72;" onclick="document.getElementById('calc-modal').style.display='block'">Máy tính</button>
+        <button style="background:#0984e3;" onclick="window.print()">🖨️ In bill</button>
+        <button style="background:#00b894;" onclick="saveTextFile()">💾 Lưu (TXT)</button>
+        <button style="background:#e17055;" onclick="clearAll()">🗑️ Xóa tất cả</button>
+        <button style="background:#636e72;" onclick="document.getElementById('calc-modal').style.display='block'">🧮 Máy tính</button>
     </div>
 </div>
 
 <div id="calc-modal">
     <input type="text" id="display" class="calc-screen" value="0" readonly>
-
     <div class="calc-body">
         <div class="calc-left">
             <div class="calc-row">
@@ -157,6 +168,42 @@
         document.querySelectorAll('input[data-v]').forEach(i => i.value = '');
         localStorage.removeItem(STORAGE_KEY);
         calcTotal();
+    }
+
+    // ===== Hàm Lưu Hóa Đơn Dạng Text =====
+    function saveTextFile() {
+        let text = "BẢNG KÊ TIỀN MẶT\n";
+        text += "Thời gian: " + document.getElementById('clock').innerText + "\n";
+        text += "------------------------\n";
+        
+        let hasData = false;
+        document.querySelectorAll('input[data-v]').forEach(i => {
+            const qty = parseInt(i.value) || 0;
+            if (qty > 0) {
+                hasData = true;
+                const denom = parseInt(i.dataset.v);
+                const s = qty * denom;
+                text += `${denom.toLocaleString('vi-VN')} x ${qty} = ${s.toLocaleString('vi-VN')}\n`;
+            }
+        });
+        
+        if (!hasData) {
+            alert("Chưa có dữ liệu để lưu!");
+            return;
+        }
+
+        text += "------------------------\n";
+        text += "Tổng cộng: " + document.getElementById('grand-total').innerText + " VND\n";
+
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `BangKeTienMat_${new Date().getTime()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 
     // ===== Máy tính =====
