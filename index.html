@@ -41,22 +41,22 @@
         .key.dark { background: #636e72; color: white; }
         .key.ac { background: #fdcb6e; color: #2d3436; }
 
-        /* ===== CSS DÀNH RIÊNG KHI IN MÁY IN NHIỆT ===== */
+        /* ===== CSS ÉP BUỘC ĐEN TUYỀN KHI IN NHIỆT ===== */
         @media print {
-            body { background: white; padding: 0; }
+            body { background: white; padding: 0; color: #000000 !important; }
             #main-app { box-shadow: none; padding: 0; width: 100%; max-width: 100%; margin: 0; border-radius: 0; }
             .btn-group, #calc-modal { display: none !important; }
             
-            h2 { font-size: 18px; margin: 5px 0; }
-            #clock { font-size: 12px; margin-bottom: 10px; }
-            table { font-size: 12px; margin-top: 0; }
-            th, td { border: none; border-bottom: 1px dashed #999; padding: 6px 2px; }
-            th { border-bottom: 1px solid #000; }
+            h2 { font-size: 20px; font-weight: bold; color: #000000 !important; margin: 5px 0; text-transform: uppercase; }
+            #clock { font-size: 13px; font-weight: bold; color: #000000 !important; margin-bottom: 12px; }
+            table { font-size: 13px; margin-top: 0; width: 100%; color: #000000 !important; }
+            th, td { border: none; border-bottom: 1px dashed #000000 !important; padding: 7px 2px; color: #000000 !important; }
+            th { border-bottom: 2px solid #000000 !important; font-weight: bold; }
             
-            input { font-size: 12px; font-weight: bold; color: black; background: transparent; padding: 0; }
+            input { font-size: 13px; font-weight: bold; color: #000000 !important; background: transparent; padding: 0; }
             input::placeholder { color: transparent; }
             
-            .total-box { font-size: 16px; background: none; border-top: 2px solid #000; border-radius: 0; padding: 10px 0; color: #000; margin-top: 5px; }
+            .total-box { font-size: 18px; font-weight: bold; background: none; border-top: 2px dashed #000000 !important; border-bottom: 2px solid #000000 !important; border-radius: 0; padding: 10px 0; color: #000000 !important; margin-top: 8px; }
         }
     </style>
 </head>
@@ -123,14 +123,12 @@
     const STORAGE_KEY = 'bangketienmat_v1';
 
     document.addEventListener('DOMContentLoaded', () => {
-        // Đồng hồ
         function updateClock() {
             document.getElementById('clock').innerText = new Date().toLocaleString('vi-VN');
         }
         setInterval(updateClock, 1000);
         updateClock();
 
-        // Tạo bảng
         const denoms = [500000, 200000, 100000, 50000, 20000, 10000, 5000, 2000, 1000];
         const tbody = document.getElementById('table-body');
         const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
@@ -169,32 +167,25 @@
         calcTotal();
     }
 
-    // ===== Hàm Lưu Hóa Đơn Dạng PDF =====
     function savePDF() {
         const element = document.getElementById('main-app');
         const btnGroup = document.querySelector('.btn-group');
         const inputs = document.querySelectorAll('input[data-v]');
-        
         let hasData = false;
-        
-        // Chuyển đổi tạm thời các ô input thành thẻ <span> (chữ thường) 
-        // để PDF render đẹp và không bị viền input
         const originalElements = [];
+
         inputs.forEach(input => {
             const val = parseInt(input.value) || 0;
             if (val > 0) hasData = true;
-
             const span = document.createElement('span');
             span.innerText = val > 0 ? val : '';
             span.style.fontWeight = 'bold';
-            
             originalElements.push({ parent: input.parentNode, input: input });
             input.parentNode.replaceChild(span, input);
         });
 
         if (!hasData) {
             alert("Chưa có dữ liệu để lưu!");
-            // Khôi phục lại thẻ input nếu không có dữ liệu
             originalElements.forEach(item => {
                 item.parent.innerHTML = '';
                 item.parent.appendChild(item.input);
@@ -202,62 +193,37 @@
             return;
         }
 
-        // Ẩn nhóm nút đi để không in dính nút vào PDF
         btnGroup.style.display = 'none';
-
-        // Cấu hình xuất PDF
         const opt = {
-            margin:       [10, 10, 10, 10], // top, left, bottom, right
+            margin:       [10, 10, 10, 10],
             filename:     `BangKeTienMat_${new Date().getTime()}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2 }, // scale cao để nét chữ rõ ràng
-            jsPDF:        { unit: 'mm', format: 'a5', orientation: 'portrait' } // Dùng A5 cho bảng kê là vừa đẹp
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'mm', format: 'a5', orientation: 'portrait' }
         };
 
-        // Tiến hành tạo file
         html2pdf().set(opt).from(element).save().then(() => {
-            // Khi lưu xong, khôi phục lại toàn bộ giao diện: hiện nút, trả lại ô input
             btnGroup.style.display = 'grid';
-            
-            const spans = element.querySelectorAll('td span');
-            spans.forEach((span, index) => {
-                originalElements[index].parent.replaceChild(originalElements[index].input, span);
+            originalElements.forEach(item => {
+                item.parent.innerHTML = '';
+                item.parent.appendChild(item.input);
             });
         });
     }
 
-    // ===== Máy tính =====
     let raw = "0";
-    function append(v) {
-        raw = (raw === "0" && v !== ".") ? v : raw + v;
-        update();
-    }
+    function append(v) { raw = (raw === "0" && v !== ".") ? v : raw + v; update(); }
     function clearCalc() { raw = "0"; update(); }
     function del() { raw = raw.length > 1 ? raw.slice(0, -1) : "0"; update(); }
     function calc() {
-        try {
-            raw = eval(raw.replace(/,/g, '.')).toString();
-            update();
-        } catch {
-            raw = "Lỗi";
-            update();
-            setTimeout(clearCalc, 1000);
-        }
+        try { raw = eval(raw.replace(/,/g, '.')).toString(); update(); } 
+        catch { raw = "Lỗi"; update(); setTimeout(clearCalc, 1000); }
     }
-    function update() {
-        document.getElementById('display').value = raw.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    }
+    function update() { document.getElementById('display').value = raw.replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
 
-    // ===== ĐĂNG KÝ SERVICE WORKER CHO PWA =====
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js')
-                .then(registration => {
-                    console.log('ServiceWorker đăng ký thành công');
-                })
-                .catch(err => {
-                    console.log('ServiceWorker đăng ký thất bại: ', err);
-                });
+            navigator.serviceWorker.register('sw.js').catch(err => console.log(err));
         });
     }
 </script>
